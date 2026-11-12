@@ -449,6 +449,39 @@ export const dbService = {
     return null;
   },
 
+  async getUserByEmail(email) {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    if (!cleanEmail) return null;
+
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .ilike('email', cleanEmail)
+          .maybeSingle();
+
+        if (!error && data) {
+          return {
+            ...data,
+            two_factor_enabled: (data.two_factor_enabled === true || data.two_factor_enabled === 1 || data.two_factor_enabled === 'true') ? 1 : 0
+          };
+        }
+      } catch (err) {
+        console.warn('[DB SERVICE] Supabase getUserByEmail fallback to SQLite:', err.message);
+      }
+    }
+
+    const localUser = db.prepare(`SELECT * FROM users WHERE LOWER(email) = ?`).get(cleanEmail);
+    if (localUser) {
+      return {
+        ...localUser,
+        two_factor_enabled: (localUser.two_factor_enabled === 1 || localUser.two_factor_enabled === true) ? 1 : 0
+      };
+    }
+    return null;
+  },
+
   async getUserById(id) {
     const numId = Number(id);
 

@@ -40,12 +40,12 @@ router.get(['/privacy', '/privacy.html'], (req, res) => {
 });
 
 // Admin Login Page
-router.get(['/admin/login', '/admin/login.html', '/admin-login.html'], (req, res) => {
+router.get(['/admin/login', '/admin/login.html', '/admin-login', '/admin-login.html'], (req, res) => {
   res.sendFile(path.join(viewsDir, 'admin-login.html'));
 });
 
 // Admin Protected Dashboard
-router.get(['/admin/dashboard', '/admin/dashboard.html', '/admin-dashboard.html'], requireAuthPage, (req, res) => {
+router.get(['/admin/dashboard', '/admin/dashboard.html', '/admin-dashboard', '/admin-dashboard.html'], requireAuthPage, (req, res) => {
   res.sendFile(path.join(viewsDir, 'admin-dashboard.html'));
 });
 

@@ -10,6 +10,7 @@
   <meta http-equiv="X-Frame-Options" content="DENY">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self' https://sammfailpehmtxlbqmmh.supabase.co https://*.supabase.co; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';">
   <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="admin-email" content="vpsayoga@gmail.com">
   <title>Admin Portal Login | VPSA YOGA</title>
   <link rel="stylesheet" href="/css/styles.css">
   <link rel="icon" type="image/png" href="/images/logo/vpsa-yoga-logo.png">
@@ -139,6 +140,35 @@
 
         <button type="submit" id="resetPasswordSubmitBtn" class="btn btn-primary" style="width: 100%; padding: 0.75rem; margin-top: 0.5rem;">
           Send Password Reset Link
+        </button>
+      </form>
+
+      <div style="margin-top: 1.25rem; text-align: center;">
+        <button type="button" onclick="resetToStep1()" style="background: none; border: none; font-size: 0.825rem; color: #64748b; cursor: pointer;">← Back to Login</button>
+      </div>
+    </div>
+
+    <!-- STEP 5: CREATE NEW PASSWORD (Triggered via recovery token link) -->
+    <div id="setNewPasswordSection" style="display: none;">
+      <div style="text-align: center; margin-bottom: 1.25rem;">
+        <div style="font-size: 2.25rem; margin-bottom: 0.5rem;">🔒</div>
+        <h3 style="font-size: 1.2rem; color: var(--primary-deep); font-weight: 800; margin-bottom: 0.25rem;">Set New Password</h3>
+        <p style="font-size: 0.825rem; color: var(--text-muted);">Enter and confirm your new administrator password.</p>
+      </div>
+
+      <form id="setNewPasswordForm">
+        <div class="form-group">
+          <label class="form-label" for="newAdminPassword">New Password</label>
+          <input type="password" id="newAdminPassword" class="form-control" placeholder="••••••••••••" required minlength="8" autocomplete="new-password">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="confirmAdminPassword">Confirm New Password</label>
+          <input type="password" id="confirmAdminPassword" class="form-control" placeholder="••••••••••••" required minlength="8" autocomplete="new-password">
+        </div>
+
+        <button type="submit" id="setNewPasswordSubmitBtn" class="btn btn-primary" style="width: 100%; padding: 0.75rem; margin-top: 0.5rem;">
+          Update &amp; Save Password
         </button>
       </form>
 

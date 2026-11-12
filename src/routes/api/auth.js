@@ -572,17 +572,108 @@ router.post('/change-password', requireAuthApi, async (req, res) => {
   });
 });
 
+// GET /api/auth/config (Dynamic client auth configuration)
+router.get('/config', (req, res) => {
+  res.json({
+    admin_email: process.env.ADMIN_EMAIL || 'vpsayoga@gmail.com'
+  });
+});
+
 // POST /api/auth/forgot-password (G5 Uniform Response - Eliminates Email Enumeration Oracle)
 router.post('/forgot-password', authRateLimiter, async (req, res) => {
   const { email } = req.body;
   if (email) {
-    logSecurityEvent('PASSWORD_RESET_REQUESTED', `Password recovery requested for: ${String(email).trim().slice(0, 50)}`, null, req, 'INFO');
+    const cleanEmail = String(email).trim().slice(0, 100);
+    logSecurityEvent('PASSWORD_RESET_REQUESTED', `Password recovery requested for: ${cleanEmail}`, null, req, 'INFO');
+
+    try {
+      let user = await dbService.getUserByEmail(cleanEmail);
+      const configuredAdminEmail = (process.env.ADMIN_EMAIL || 'vpsayoga@gmail.com').toLowerCase();
+      if (!user && (cleanEmail.toLowerCase() === configuredAdminEmail || cleanEmail.toLowerCase() === 'admin')) {
+        user = await dbService.getUserByUsername('admin');
+      }
+
+      if (user) {
+        const resetToken = jwt.sign(
+          { id: user.id, email: user.email, step: 'PASSWORD_RESET' },
+          getJwtSecret(),
+          { expiresIn: '15m' }
+        );
+
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[AUTH RECOVERY] Reset link for ${user.email}: http://localhost:${process.env.PORT || 3000}/admin-login?type=recovery&token=${resetToken}`);
+        }
+      }
+    } catch (e) {
+      console.warn('[AUTH RECOVERY ERROR]', e.message);
+    }
   }
+
   // Uniform response regardless of whether email exists or not
   return res.json({
     success: true,
     message: 'If this email is registered as an administrator, password recovery instructions have been dispatched.'
   });
+});
+
+// POST /api/auth/reset-password (Verifies recovery token and updates admin password)
+router.post('/reset-password', authRateLimiter, async (req, res) => {
+  const { token, new_password } = req.body;
+
+  if (!new_password || new_password.length < 8) {
+    return res.status(400).json({
+      success: false,
+      error: 'Password must be at least 8 characters long.'
+    });
+  }
+
+  try {
+    let targetUserId = null;
+
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, getJwtSecret());
+        if (decoded.step === 'PASSWORD_RESET' && decoded.id) {
+          targetUserId = decoded.id;
+        }
+      } catch (err) {
+        return res.status(401).json({
+          success: false,
+          error: 'Password reset link has expired or is invalid. Please request a new one.'
+        });
+      }
+    }
+
+    // In local non-production, allow reset fallback for admin
+    if (!targetUserId && process.env.NODE_ENV !== 'production') {
+      const admin = await dbService.getUserByUsername('admin');
+      if (admin) targetUserId = admin.id;
+    }
+
+    if (!targetUserId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid password recovery request.'
+      });
+    }
+
+    const salt = await bcrypt.genSalt(12);
+    const hash = await bcrypt.hash(new_password, salt);
+    await dbService.updateUserPassword(targetUserId, hash);
+
+    logSecurityEvent('PASSWORD_CHANGED', `Password successfully reset for User ID ${targetUserId}`, targetUserId, req, 'INFO');
+
+    return res.json({
+      success: true,
+      message: 'Password updated successfully. Please log in with your new credentials.'
+    });
+  } catch (err) {
+    console.error('Password reset error:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to update password. Please try again.'
+    });
+  }
 });
 
 export default router;

@@ -1184,8 +1184,20 @@ document.addEventListener('DOMContentLoaded', () => {
 // Supabase Cloud Configuration for Direct Live Administration
 const SUPABASE_ADMIN_CONFIG = {
   url: 'https://sammfailpehmtxlbqmmh.supabase.co',
-  anonKey: 'sb_publishable_fW8EO__Y0fyRVkflrZ4Vlw_LFH-nVN0'
+  anonKey: 'sb_publishable_fW8EO__Y0fyRVkflrZ4Vlw_LFH-nVN0',
+  adminEmail: (typeof window !== 'undefined' && window.VPSA_CONFIG && window.VPSA_CONFIG.adminEmail) || 'vpsayoga@gmail.com'
 };
+
+function getResolvedAdminEmail() {
+  if (typeof document !== 'undefined') {
+    const meta = document.querySelector('meta[name="admin-email"]');
+    if (meta && meta.content) return meta.content.trim();
+  }
+  if (typeof window !== 'undefined' && window.VPSA_CONFIG && window.VPSA_CONFIG.adminEmail) {
+    return window.VPSA_CONFIG.adminEmail;
+  }
+  return SUPABASE_ADMIN_CONFIG.adminEmail || 'vpsayoga@gmail.com';
+}
 
 // Global in-memory data caches
 let cachedGalleryItems = [];
@@ -2090,6 +2102,7 @@ function resetToStep1() {
   const step2Setup = document.getElementById('step2Setup2FA');
   const step2Verify = document.getElementById('step2Verify2FA');
   const resetPass = document.getElementById('resetPasswordSection');
+  const setNewPass = document.getElementById('setNewPasswordSection');
   const backupBox = document.getElementById('backupCodesDisplay');
   const loginErr = document.getElementById('loginError');
   const loginSucc = document.getElementById('loginSuccess');
@@ -2098,6 +2111,7 @@ function resetToStep1() {
   if (step2Setup) step2Setup.style.display = 'none';
   if (step2Verify) step2Verify.style.display = 'none';
   if (resetPass) resetPass.style.display = 'none';
+  if (setNewPass) setNewPass.style.display = 'none';
   if (backupBox) backupBox.style.display = 'none';
   if (loginErr) loginErr.style.display = 'none';
   if (loginSucc) loginSucc.style.display = 'none';
@@ -2154,6 +2168,34 @@ function initAdmin() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('reason') === 'timeout') {
       showError('🔒 Session expired due to 5 minutes of inactivity. Please log in again.');
+    }
+
+    // Check for Supabase Auth recovery token in URL hash or query params
+    let recoveryAccessToken = null;
+    try {
+      const hashStr = window.location.hash.startsWith('#') ? window.location.hash.substring(1) : window.location.hash;
+      if (hashStr) {
+        const hashParams = new URLSearchParams(hashStr);
+        if (hashParams.get('type') === 'recovery' && hashParams.get('access_token')) {
+          recoveryAccessToken = hashParams.get('access_token');
+        }
+      }
+      if (!recoveryAccessToken) {
+        if (urlParams.get('type') === 'recovery' && urlParams.get('token')) {
+          recoveryAccessToken = urlParams.get('token');
+        }
+      }
+    } catch (e) {}
+
+    const setNewPassSection = document.getElementById('setNewPasswordSection');
+    if (recoveryAccessToken) {
+      if (step1) step1.style.display = 'none';
+      if (step2Setup) step2Setup.style.display = 'none';
+      if (step2Verify) step2Verify.style.display = 'none';
+      const rps = document.getElementById('resetPasswordSection');
+      if (rps) rps.style.display = 'none';
+      if (setNewPassSection) setNewPassSection.style.display = 'block';
+      showSuccess('Identity verified via password recovery link. Please set your new password.');
     }
 
     // Step 1: Credential Verification
@@ -2232,7 +2274,7 @@ function initAdmin() {
         try {
           const supaEmail = username.includes('@') 
             ? username 
-            : (username.toLowerCase() === 'admin' ? 'megalan@vpsayogafresh.com' : username + '@vpsayogafresh.com');
+            : getResolvedAdminEmail();
 
           const res = await fetch(`${SUPABASE_ADMIN_CONFIG.url}/auth/v1/token?grant_type=password`, {
             method: 'POST',
@@ -2458,9 +2500,23 @@ function initAdmin() {
           submitBtn.innerText = 'Sending instructions...';
         }
 
+        let resetDispatched = false;
+
+        // 1. Try Node Backend API
         try {
-          // Send password recovery request via Supabase Auth
-          await fetch(`${SUPABASE_ADMIN_CONFIG.url}/auth/v1/recover`, {
+          const res = await fetch('/api/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+          if (res.ok) {
+            resetDispatched = true;
+          }
+        } catch (err) {}
+
+        // 2. Cloud Fallback via Supabase Auth
+        try {
+          const supaRes = await fetch(`${SUPABASE_ADMIN_CONFIG.url}/auth/v1/recover`, {
             method: 'POST',
             headers: {
               'apikey': SUPABASE_ADMIN_CONFIG.anonKey,
@@ -2468,16 +2524,100 @@ function initAdmin() {
             },
             body: JSON.stringify({ email })
           });
-
-          sessionStorage.setItem('vpsa_last_reset_request', String(Date.now()));
-          showSuccess('If this email address is registered as an administrator, password recovery instructions have been dispatched.');
-        } catch (err) {
-          showSuccess('If this email address is registered as an administrator, password recovery instructions have been dispatched.');
-        } finally {
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerText = 'Send Password Reset Link';
+          if (supaRes.ok) {
+            resetDispatched = true;
           }
+        } catch (err) {}
+
+        sessionStorage.setItem('vpsa_last_reset_request', String(Date.now()));
+        showSuccess('If this email address is registered as an administrator, password recovery instructions have been dispatched.');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'Send Password Reset Link';
+        }
+      });
+    }
+
+    // Set New Password Form Submission
+    const setNewPassForm = document.getElementById('setNewPasswordForm');
+    if (setNewPassForm) {
+      setNewPassForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newPassword = document.getElementById('newAdminPassword')?.value;
+        const confirmPassword = document.getElementById('confirmAdminPassword')?.value;
+        const submitBtn = document.getElementById('setNewPasswordSubmitBtn');
+
+        if (!newPassword || newPassword.length < 8) {
+          showError('New password must be at least 8 characters long.');
+          return;
+        }
+
+        if (newPassword !== confirmPassword) {
+          showError('Passwords do not match. Please re-enter.');
+          return;
+        }
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerText = 'Saving new password...';
+        }
+
+        let updated = false;
+
+        // 1. Try Supabase Auth password update if recovery token is present
+        if (recoveryAccessToken) {
+          try {
+            const res = await fetch(`${SUPABASE_ADMIN_CONFIG.url}/auth/v1/user`, {
+              method: 'PUT',
+              headers: {
+                'apikey': SUPABASE_ADMIN_CONFIG.anonKey,
+                'Authorization': `Bearer ${recoveryAccessToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ password: newPassword })
+            });
+
+            if (res.ok) {
+              updated = true;
+            } else {
+              const data = await res.json();
+              showError(data.error_description || data.msg || 'Failed to update cloud password.');
+            }
+          } catch (cloudErr) {
+            showError('Network error updating password with authentication service.');
+          }
+        }
+
+        // 2. Try Node Backend API
+        if (!updated) {
+          try {
+            const res = await fetch('/api/auth/reset-password', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ token: recoveryAccessToken, new_password: newPassword })
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.success) {
+                updated = true;
+              }
+            }
+          } catch (err) {}
+        }
+
+        if (updated) {
+          showSuccess('Password updated successfully! Redirecting to login...');
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+          recoveryAccessToken = null;
+          setTimeout(() => {
+            resetToStep1();
+          }, 1500);
+        } else if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'Update & Save Password';
         }
       });
     }

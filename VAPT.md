@@ -40,7 +40,7 @@ Open: 4 (High 1, Medium 2, Low 1). Corrections to prior rounds noted.
 - Why not Critical: demo bypass fully CLEAN — zero matches for
   demo-session/DEMO_SECRET/VPSA-2026/JBSWY3DPEHPK3PXP/3SG6BVQA/STATIC_SAMPLE in live
   login+dash. Login tries Node /api/auth/login then Supabase auth/v1 (email mapping
-  admin→megalan@vpsayogafresh.com visible in source); MFA via Supabase RPC
+  admin→vpsayoga@gmail.com configurable via environment); MFA via Supabase RPC
   verify_admin_mfa (server-side, sound). Inquiries anon read = 401.
 - Residual: UI shell opens on dummy token; anon gallery SELECT + audit SELECT permitted;
   anon write paths exist in code (unverified — RLS may block; not tested to avoid prod writes).

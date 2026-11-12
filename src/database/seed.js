@@ -10,7 +10,7 @@ export async function seedDatabase() {
   // 1. Seed Admin User
   const adminUser = process.env.ADMIN_USERNAME || 'admin';
   const adminPass = process.env.ADMIN_PASSWORD || 'ChangeMeImmediately#2026!';
-  const adminEmail = process.env.ADMIN_EMAIL || 'megalan@vpsayogafresh.com';
+  const adminEmail = process.env.ADMIN_EMAIL || 'vpsayoga@gmail.com';
 
   const salt = await bcrypt.genSalt(12);
   const hash = await bcrypt.hash(adminPass, salt);

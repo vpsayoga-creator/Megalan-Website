@@ -363,12 +363,25 @@ button, input, select, textarea {
   user-select: none;
 }
 
-.nav-link:hover,
-.nav-link:focus-visible {
+.nav-link:hover:not(.active),
+.nav-link:focus-visible:not(.active) {
   color: var(--primary);
-  background-color: #f0fdf4;
-  border-color: var(--primary);
-  box-shadow: 0 1px 4px rgba(15, 81, 50, 0.08);
+  background-color: rgba(15, 81, 50, 0.05);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.nav-link:hover:not(.active)::after,
+.nav-link:focus-visible:not(.active)::after {
+  content: '';
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  background-color: var(--primary);
+  border-radius: 2px;
 }
 
 .nav-link.active {
