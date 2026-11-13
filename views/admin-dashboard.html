@@ -50,10 +50,42 @@
 </head>
 <body id="adminDashboard" style="background-color: #f1f5f9; display: none;">
 
+  <!-- Mobile Header Bar (Visible on mobile/tablet <= 991px) -->
+  <header class="admin-mobile-header">
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <button type="button" id="adminSidebarToggle" class="mobile-sidebar-toggle-btn" aria-label="Open Admin Menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+        <span id="mobileSidebarNewBadge" class="mobile-sidebar-pill" style="display: none;">0</span>
+      </button>
+      <div class="mobile-header-brand">
+        <img src="/images/logo/vpsa-yoga-logo.png" alt="VPSA YOGA" class="mobile-header-logo">
+        <div>
+          <span class="mobile-brand-title">VPSA YOGA</span>
+          <span class="mobile-brand-subtitle">Admin Portal</span>
+        </div>
+      </div>
+    </div>
+    <div class="mobile-header-actions">
+      <button type="button" class="mobile-action-btn" onclick="syncAllAdminData(true)" title="Sync Database" aria-label="Sync Database">
+        🔄
+      </button>
+      <button type="button" id="mobileLogoutBtn" class="mobile-action-btn logout" title="Logout" aria-label="Logout">
+        🚪
+      </button>
+    </div>
+  </header>
+
+  <!-- Sidebar Backdrop Overlay -->
+  <div id="adminSidebarBackdrop" class="admin-sidebar-backdrop"></div>
+
   <div class="admin-layout">
     
     <!-- Sidebar -->
-    <aside class="admin-sidebar">
+    <aside id="adminSidebar" class="admin-sidebar">
       <div class="admin-brand-box">
         <div style="display: flex; align-items: center; gap: 0.75rem; cursor: default; user-select: none;">
           <img src="/images/logo/vpsa-yoga-logo.png" alt="VPSA YOGA" style="width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.3); background: #ffffff;">
@@ -62,6 +94,7 @@
             <div style="font-size: 0.65rem; color: var(--accent); font-weight: 700; text-transform: uppercase;">Admin Portal</div>
           </div>
         </div>
+        <button type="button" id="adminSidebarCloseBtn" class="admin-sidebar-close-btn" aria-label="Close Admin Menu">&times;</button>
       </div>
       <div style="font-size: 0.725rem; color: #64748b; margin-top: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700;">
         Admin Control Portal
@@ -132,6 +165,28 @@
           </div>
         </div>
 
+        <!-- Gallery Category Filter Pills -->
+        <div class="gallery-category-filter-bar">
+          <button type="button" class="gallery-filter-pill active" data-category="all" onclick="filterGalleryByCategory('all')">
+            All Photos (<span id="pillCountAll">0</span>)
+          </button>
+          <button type="button" class="gallery-filter-pill" data-category="farms" onclick="filterGalleryByCategory('farms')">
+            🌱 Farms &amp; Plantations
+          </button>
+          <button type="button" class="gallery-filter-pill" data-category="harvest" onclick="filterGalleryByCategory('harvest')">
+            🚜 Harvest &amp; Grading
+          </button>
+          <button type="button" class="gallery-filter-pill" data-category="logistics" onclick="filterGalleryByCategory('logistics')">
+            🚛 Cold Chain Fleet
+          </button>
+          <button type="button" class="gallery-filter-pill" data-category="products" onclick="filterGalleryByCategory('products')">
+            🍌 Banana Varieties
+          </button>
+          <button type="button" class="gallery-filter-pill" data-category="packaging" onclick="filterGalleryByCategory('packaging')">
+            📦 Export Packaging
+          </button>
+        </div>
+
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.75rem;" id="adminGalleryGrid">
           <!-- Populated by admin.js -->
         </div>
@@ -150,18 +205,109 @@
           </div>
         </div>
 
-        <div class="admin-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 1.5rem;">
-          <div class="admin-stat-card">
-            <div class="admin-stat-label">Total Leads &amp; Quotations</div>
+        <!-- Interactive KPI Metric Cards -->
+        <div class="admin-stats-grid kpi-stats-grid">
+          <div class="admin-stat-card kpi-card active" id="kpiCardAll" onclick="filterByKpi('all')">
+            <div class="kpi-card-top">
+              <span class="admin-stat-label">Total Leads</span>
+              <span class="kpi-badge-icon">📊</span>
+            </div>
             <div id="totalInquiriesCount" class="admin-stat-val">0</div>
+            <div class="kpi-card-sub">All wholesale RFQs received</div>
           </div>
-          <div class="admin-stat-card">
-            <div class="admin-stat-label">Channel Status</div>
-            <div style="font-size: 0.95rem; font-weight: 700; color: #16a34a; margin-top: 0.35rem;">Active &amp; Receiving Inquiries</div>
+
+          <div class="admin-stat-card kpi-card" id="kpiCardNew" onclick="filterByKpi('new')">
+            <div class="kpi-card-top">
+              <span class="admin-stat-label">New / Unread</span>
+              <span class="kpi-badge-icon">🟡</span>
+            </div>
+            <div id="kpiNewCount" class="admin-stat-val" style="color: #d97706;">0</div>
+            <div class="kpi-card-sub">Awaiting initial response</div>
+          </div>
+
+          <div class="admin-stat-card kpi-card" id="kpiCardProgress" onclick="filterByKpi('in_progress')">
+            <div class="kpi-card-top">
+              <span class="admin-stat-label">In Progress</span>
+              <span class="kpi-badge-icon">🔵</span>
+            </div>
+            <div id="kpiProgressCount" class="admin-stat-val" style="color: #2563eb;">0</div>
+            <div class="kpi-card-sub">Contacted &amp; in review</div>
+          </div>
+
+          <div class="admin-stat-card kpi-card" id="kpiCardCompleted" onclick="filterByKpi('completed')">
+            <div class="kpi-card-top">
+              <span class="admin-stat-label">Completed</span>
+              <span class="kpi-badge-icon">🟢</span>
+            </div>
+            <div id="kpiCompletedCount" class="admin-stat-val" style="color: #16a34a;">0</div>
+            <div class="kpi-card-sub">Fulfilled / Closed quotes</div>
           </div>
         </div>
 
-        <div class="admin-card" style="padding: 0; overflow: hidden; box-shadow: var(--shadow-sm);">
+        <!-- Filter, Search & Sort Toolbar -->
+        <div class="admin-filter-bar">
+          <div class="filter-search-box">
+            <span class="filter-search-icon">🔍</span>
+            <input type="text" id="inquirySearchInput" class="filter-input-search" placeholder="Search by name, company, email, phone, variety, message..." autocomplete="off">
+            <button type="button" id="clearSearchBtn" class="filter-clear-btn" style="display: none;" title="Clear search" aria-label="Clear search">&times;</button>
+          </div>
+
+          <div class="filter-controls-group">
+            <div class="filter-control-item">
+              <label class="filter-control-label" for="inquiryStatusFilter">Status</label>
+              <select id="inquiryStatusFilter" class="filter-select">
+                <option value="all">All Statuses</option>
+                <option value="new">🟡 New</option>
+                <option value="contacted">🔵 Contacted</option>
+                <option value="in_review">🟣 In Review</option>
+                <option value="completed">🟢 Completed</option>
+              </select>
+            </div>
+
+            <div class="filter-control-item">
+              <label class="filter-control-label" for="inquiryVarietyFilter">Banana Variety</label>
+              <select id="inquiryVarietyFilter" class="filter-select">
+                <option value="all">All Varieties</option>
+                <option value="G9 Cavendish">G9 Cavendish</option>
+                <option value="Nendran">Nendran Banana</option>
+                <option value="Red Banana">Red Banana</option>
+                <option value="Robusta">Robusta</option>
+                <option value="Poovan">Poovan</option>
+                <option value="Rasthali">Rasthali</option>
+                <option value="Elakki">Elakki / Yelakki</option>
+                <option value="Monthan">Monthan</option>
+                <option value="General Bulk">General Bulk / Other</option>
+              </select>
+            </div>
+
+            <div class="filter-control-item">
+              <label class="filter-control-label" for="inquirySortFilter">Sort By</label>
+              <select id="inquirySortFilter" class="filter-select">
+                <option value="newest">📅 Newest First</option>
+                <option value="oldest">📅 Oldest First</option>
+                <option value="name_asc">👤 Client Name (A-Z)</option>
+                <option value="name_desc">👤 Client Name (Z-A)</option>
+                <option value="qty_desc">📦 Volume (High to Low)</option>
+                <option value="qty_asc">📦 Volume (Low to High)</option>
+              </select>
+            </div>
+
+            <button type="button" id="resetInquiryFiltersBtn" class="btn btn-sm btn-outline filter-reset-btn" title="Reset all filters">
+              ↺ Reset
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Results Meta Row -->
+        <div class="filter-meta-row">
+          <div id="filterResultCount" class="filter-result-count">
+            Loading wholesale inquiries...
+          </div>
+          <div id="activeFilterPills" class="active-filter-chips"></div>
+        </div>
+
+        <!-- Desktop Table View (>= 769px) -->
+        <div class="admin-card desktop-table-view" style="padding: 0; overflow: hidden; box-shadow: var(--shadow-sm);">
           <div class="table-responsive">
             <table class="data-table">
               <thead>
@@ -181,6 +327,11 @@
             </table>
           </div>
         </div>
+
+        <!-- Mobile Cards View (<= 768px) -->
+        <div id="inquiriesCardsMobile" class="inquiries-mobile-cards">
+          <!-- Populated by admin.js -->
+        </div>
       </section>
 
       <!-- TAB 3: ACTIVITY & AUDIT LOGS -->
@@ -193,7 +344,8 @@
           <button class="btn btn-outline" onclick="loadAdminAuditLogs()">🔄 Refresh Trail</button>
         </div>
 
-        <div class="admin-card" style="padding: 0; overflow: hidden; box-shadow: var(--shadow-sm);">
+        <!-- Desktop Table View -->
+        <div class="admin-card desktop-table-view" style="padding: 0; overflow: hidden; box-shadow: var(--shadow-sm);">
           <div class="table-responsive">
             <table class="data-table">
               <thead>
@@ -210,6 +362,11 @@
               </tbody>
             </table>
           </div>
+        </div>
+
+        <!-- Mobile Audit Trail Cards -->
+        <div id="auditCardsMobile" class="audit-mobile-cards">
+          <!-- Populated by admin.js -->
         </div>
       </section>
 

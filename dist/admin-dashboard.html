@@ -50,10 +50,42 @@
 </head>
 <body id="adminDashboard" style="background-color: #f1f5f9; display: none;">
 
+  <!-- Mobile Header Bar (Visible on mobile/tablet <= 991px) -->
+  <header class="admin-mobile-header">
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <button type="button" id="adminSidebarToggle" class="mobile-sidebar-toggle-btn" aria-label="Open Admin Menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+        <span id="mobileSidebarNewBadge" class="mobile-sidebar-pill" style="display: none;">0</span>
+      </button>
+      <div class="mobile-header-brand">
+        <img src="/images/logo/vpsa-yoga-logo.png" alt="VPSA YOGA" class="mobile-header-logo">
+        <div>
+          <span class="mobile-brand-title">VPSA YOGA</span>
+          <span class="mobile-brand-subtitle">Admin Portal</span>
+        </div>
+      </div>
+    </div>
+    <div class="mobile-header-actions">
+      <button type="button" class="mobile-action-btn" onclick="syncAllAdminData(true)" title="Sync Database" aria-label="Sync Database">
+        🔄
+      </button>
+      <button type="button" id="mobileLogoutBtn" class="mobile-action-btn logout" title="Logout" aria-label="Logout">
+        🚪
+      </button>
+    </div>
+  </header>
+
+  <!-- Sidebar Backdrop Overlay -->
+  <div id="adminSidebarBackdrop" class="admin-sidebar-backdrop"></div>
+
   <div class="admin-layout">
     
     <!-- Sidebar -->
-    <aside class="admin-sidebar">
+    <aside id="adminSidebar" class="admin-sidebar">
       <div class="admin-brand-box">
         <div style="display: flex; align-items: center; gap: 0.75rem; cursor: default; user-select: none;">
           <img src="/images/logo/vpsa-yoga-logo.png" alt="VPSA YOGA" style="width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.3); background: #ffffff;">
@@ -62,6 +94,7 @@
             <div style="font-size: 0.65rem; color: var(--accent); font-weight: 700; text-transform: uppercase;">Admin Portal</div>
           </div>
         </div>
+        <button type="button" id="adminSidebarCloseBtn" class="admin-sidebar-close-btn" aria-label="Close Admin Menu">&times;</button>
       </div>
       <div style="font-size: 0.725rem; color: #64748b; margin-top: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700;">
         Admin Control Portal
@@ -132,6 +165,28 @@
           </div>
         </div>
 
+        <!-- Gallery Category Filter Pills -->
+        <div class="gallery-category-filter-bar">
+          <button type="button" class="gallery-filter-pill active" data-category="all" onclick="filterGalleryByCategory('all')">
+            All Photos (<span id="pillCountAll">0</span>)
+          </button>
+          <button type="button" class="gallery-filter-pill" data-category="farms" onclick="filterGalleryByCategory('farms')">
+            🌱 Farms &amp; Plantations
+          </button>
+          <button type="button" class="gallery-filter-pill" data-category="harvest" onclick="filterGalleryByCategory('harvest')">
+            🚜 Harvest &amp; Grading
+          </button>
+          <button type="button" class="gallery-filter-pill" data-category="logistics" onclick="filterGalleryByCategory('logistics')">
+            🚛 Cold Chain Fleet
+          </button>
+          <button type="button" class="gallery-filter-pill" data-category="products" onclick="filterGalleryByCategory('products')">
+            🍌 Banana Varieties
+          </button>
+          <button type="button" class="gallery-filter-pill" data-category="packaging" onclick="filterGalleryByCategory('packaging')">
+            📦 Export Packaging
+          </button>
+        </div>
+
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.75rem;" id="adminGalleryGrid">
           <!-- Populated by admin.js -->
         </div>
@@ -150,18 +205,109 @@
           </div>
         </div>
 
-        <div class="admin-stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 1.5rem;">
-          <div class="admin-stat-card">
-            <div class="admin-stat-label">Total Leads &amp; Quotations</div>
+        <!-- Interactive KPI Metric Cards -->
+        <div class="admin-stats-grid kpi-stats-grid">
+          <div class="admin-stat-card kpi-card active" id="kpiCardAll" onclick="filterByKpi('all')">
+            <div class="kpi-card-top">
+              <span class="admin-stat-label">Total Leads</span>
+              <span class="kpi-badge-icon">📊</span>
+            </div>
             <div id="totalInquiriesCount" class="admin-stat-val">0</div>
+            <div class="kpi-card-sub">All wholesale RFQs received</div>
           </div>
-          <div class="admin-stat-card">
-            <div class="admin-stat-label">Channel Status</div>
-            <div style="font-size: 0.95rem; font-weight: 700; color: #16a34a; margin-top: 0.35rem;">Active &amp; Receiving Inquiries</div>
+
+          <div class="admin-stat-card kpi-card" id="kpiCardNew" onclick="filterByKpi('new')">
+            <div class="kpi-card-top">
+              <span class="admin-stat-label">New / Unread</span>
+              <span class="kpi-badge-icon">🟡</span>
+            </div>
+            <div id="kpiNewCount" class="admin-stat-val" style="color: #d97706;">0</div>
+            <div class="kpi-card-sub">Awaiting initial response</div>
+          </div>
+
+          <div class="admin-stat-card kpi-card" id="kpiCardProgress" onclick="filterByKpi('in_progress')">
+            <div class="kpi-card-top">
+              <span class="admin-stat-label">In Progress</span>
+              <span class="kpi-badge-icon">🔵</span>
+            </div>
+            <div id="kpiProgressCount" class="admin-stat-val" style="color: #2563eb;">0</div>
+            <div class="kpi-card-sub">Contacted &amp; in review</div>
+          </div>
+
+          <div class="admin-stat-card kpi-card" id="kpiCardCompleted" onclick="filterByKpi('completed')">
+            <div class="kpi-card-top">
+              <span class="admin-stat-label">Completed</span>
+              <span class="kpi-badge-icon">🟢</span>
+            </div>
+            <div id="kpiCompletedCount" class="admin-stat-val" style="color: #16a34a;">0</div>
+            <div class="kpi-card-sub">Fulfilled / Closed quotes</div>
           </div>
         </div>
 
-        <div class="admin-card" style="padding: 0; overflow: hidden; box-shadow: var(--shadow-sm);">
+        <!-- Filter, Search & Sort Toolbar -->
+        <div class="admin-filter-bar">
+          <div class="filter-search-box">
+            <span class="filter-search-icon">🔍</span>
+            <input type="text" id="inquirySearchInput" class="filter-input-search" placeholder="Search by name, company, email, phone, variety, message..." autocomplete="off">
+            <button type="button" id="clearSearchBtn" class="filter-clear-btn" style="display: none;" title="Clear search" aria-label="Clear search">&times;</button>
+          </div>
+
+          <div class="filter-controls-group">
+            <div class="filter-control-item">
+              <label class="filter-control-label" for="inquiryStatusFilter">Status</label>
+              <select id="inquiryStatusFilter" class="filter-select">
+                <option value="all">All Statuses</option>
+                <option value="new">🟡 New</option>
+                <option value="contacted">🔵 Contacted</option>
+                <option value="in_review">🟣 In Review</option>
+                <option value="completed">🟢 Completed</option>
+              </select>
+            </div>
+
+            <div class="filter-control-item">
+              <label class="filter-control-label" for="inquiryVarietyFilter">Banana Variety</label>
+              <select id="inquiryVarietyFilter" class="filter-select">
+                <option value="all">All Varieties</option>
+                <option value="G9 Cavendish">G9 Cavendish</option>
+                <option value="Nendran">Nendran Banana</option>
+                <option value="Red Banana">Red Banana</option>
+                <option value="Robusta">Robusta</option>
+                <option value="Poovan">Poovan</option>
+                <option value="Rasthali">Rasthali</option>
+                <option value="Elakki">Elakki / Yelakki</option>
+                <option value="Monthan">Monthan</option>
+                <option value="General Bulk">General Bulk / Other</option>
+              </select>
+            </div>
+
+            <div class="filter-control-item">
+              <label class="filter-control-label" for="inquirySortFilter">Sort By</label>
+              <select id="inquirySortFilter" class="filter-select">
+                <option value="newest">📅 Newest First</option>
+                <option value="oldest">📅 Oldest First</option>
+                <option value="name_asc">👤 Client Name (A-Z)</option>
+                <option value="name_desc">👤 Client Name (Z-A)</option>
+                <option value="qty_desc">📦 Volume (High to Low)</option>
+                <option value="qty_asc">📦 Volume (Low to High)</option>
+              </select>
+            </div>
+
+            <button type="button" id="resetInquiryFiltersBtn" class="btn btn-sm btn-outline filter-reset-btn" title="Reset all filters">
+              ↺ Reset
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Results Meta Row -->
+        <div class="filter-meta-row">
+          <div id="filterResultCount" class="filter-result-count">
+            Loading wholesale inquiries...
+          </div>
+          <div id="activeFilterPills" class="active-filter-chips"></div>
+        </div>
+
+        <!-- Desktop Table View (>= 769px) -->
+        <div class="admin-card desktop-table-view" style="padding: 0; overflow: hidden; box-shadow: var(--shadow-sm);">
           <div class="table-responsive">
             <table class="data-table">
               <thead>
@@ -181,6 +327,11 @@
             </table>
           </div>
         </div>
+
+        <!-- Mobile Cards View (<= 768px) -->
+        <div id="inquiriesCardsMobile" class="inquiries-mobile-cards">
+          <!-- Populated by admin.js -->
+        </div>
       </section>
 
       <!-- TAB 3: ACTIVITY & AUDIT LOGS -->
@@ -193,7 +344,8 @@
           <button class="btn btn-outline" onclick="loadAdminAuditLogs()">🔄 Refresh Trail</button>
         </div>
 
-        <div class="admin-card" style="padding: 0; overflow: hidden; box-shadow: var(--shadow-sm);">
+        <!-- Desktop Table View -->
+        <div class="admin-card desktop-table-view" style="padding: 0; overflow: hidden; box-shadow: var(--shadow-sm);">
           <div class="table-responsive">
             <table class="data-table">
               <thead>
@@ -210,6 +362,11 @@
               </tbody>
             </table>
           </div>
+        </div>
+
+        <!-- Mobile Audit Trail Cards -->
+        <div id="auditCardsMobile" class="audit-mobile-cards">
+          <!-- Populated by admin.js -->
         </div>
       </section>
 
@@ -1560,7 +1717,61 @@ function switchTab(tabId) {
   if (tabId === 'audit') loadAdminAuditLogs();
 }
 
-// 3. Gallery Loader
+// 3. Gallery Loader & Category Filter
+let currentGalleryFilter = 'all';
+
+function filterGalleryByCategory(category) {
+  currentGalleryFilter = category || 'all';
+  document.querySelectorAll('.gallery-filter-pill').forEach(btn => {
+    if (btn.getAttribute('data-category') === currentGalleryFilter) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+  renderGalleryGrid();
+}
+
+function renderGalleryGrid() {
+  const container = document.getElementById('adminGalleryGrid');
+  if (!container) return;
+
+  const countEl = document.getElementById('totalPhotosCount');
+  if (countEl) countEl.innerText = cachedGalleryItems.length;
+
+  const pillCountAll = document.getElementById('pillCountAll');
+  if (pillCountAll) pillCountAll.innerText = cachedGalleryItems.length;
+
+  let items = cachedGalleryItems;
+  if (currentGalleryFilter && currentGalleryFilter !== 'all') {
+    items = cachedGalleryItems.filter(item => (item.category || '').toLowerCase() === currentGalleryFilter.toLowerCase());
+  }
+
+  if (items.length === 0) {
+    container.innerHTML = `
+      <div class="admin-card" style="grid-column: 1 / -1; text-align: center; color: #64748b; padding: 3rem;">
+        No photos found in category "${escapeHtml(currentGalleryFilter)}".
+        <br><button type="button" class="btn btn-sm btn-outline" onclick="filterGalleryByCategory('all')" style="margin-top: 1rem;">View All Photos</button>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = items.map(item => `
+    <div class="admin-card" style="padding: 1.25rem; margin-bottom: 0; display: flex; flex-direction: column;">
+      <div style="height: 175px; overflow: hidden; border-radius: 10px; margin-bottom: 1rem; background: #e2e8f0; position: relative;">
+        <img src="${resolveImageUrl(item.image_url)}" alt="${escapeHtml(item.title)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/images/logo/vpsa-yoga-logo.png'" />
+        <span class="status-pill status-contacted" style="position: absolute; top: 0.65rem; right: 0.65rem; background: rgba(255, 255, 255, 0.92); font-size: 0.7rem; box-shadow: 0 2px 6px rgba(0,0,0,0.15); text-transform: uppercase;">${escapeHtml(item.category)}</span>
+      </div>
+      <h4 style="font-size: 1.1rem; font-weight: 800; color: #0f172a; margin-bottom: 0.35rem; line-height: 1.3;">${escapeHtml(item.title)}</h4>
+      <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1.25rem; flex-grow: 1; line-height: 1.5; min-height: 42px;">${escapeHtml(item.description || 'No description provided.')}</p>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; margin-top: auto;">
+        <button type="button" class="btn btn-sm btn-outline" data-action="edit" data-id="${item.id}" onclick="openEditModalById(event, ${item.id})">✏️ Edit</button>
+        <button type="button" class="btn btn-sm btn-outline" data-action="delete" data-id="${item.id}" onclick="deleteGalleryItem(event, ${item.id})" style="color: #ef4444; border-color: #fca5a5; background-color: #fff1f2;">🗑️ Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
 async function loadAdminGallery() {
   const container = document.getElementById('adminGalleryGrid');
   if (!container) return;
@@ -1624,28 +1835,389 @@ async function loadAdminGallery() {
     cachedGalleryItems = [...window.__EMBEDDED_GALLERY__];
   }
 
-  const countEl = document.getElementById('totalPhotosCount');
-  if (countEl) countEl.innerText = cachedGalleryItems.length;
+  renderGalleryGrid();
+}
 
-  if (cachedGalleryItems.length === 0) {
-    container.innerHTML = `<div class="admin-card" style="grid-column: 1 / -1; text-align: center; color: #64748b; padding: 3rem;">No gallery photos found. Click "➕ Upload New Photo" above to add one.</div>`;
+// Phone Number Helpers for Mobile Quick Actions
+function formatPhoneClean(countryCode, mobileNumber) {
+  let combined = (countryCode || '') + (mobileNumber || '');
+  return combined.replace(/[^0-9+]/g, '');
+}
+
+function formatPhoneForWa(countryCode, mobileNumber) {
+  let combined = (countryCode || '') + (mobileNumber || '');
+  let digits = combined.replace(/[^0-9]/g, '');
+  if (!digits) return '';
+  if (digits.length === 10 && !digits.startsWith('91')) {
+    digits = '91' + digits;
+  }
+  return digits;
+}
+
+// 4. Inquiries Filter State & Management
+const inquiryFilters = {
+  search: '',
+  status: 'all',
+  variety: 'all',
+  sort: 'newest'
+};
+
+function filterByKpi(kpiType) {
+  if (kpiType === 'all') {
+    inquiryFilters.status = 'all';
+  } else if (kpiType === 'new') {
+    inquiryFilters.status = 'new';
+  } else if (kpiType === 'in_progress') {
+    inquiryFilters.status = 'in_progress';
+  } else if (kpiType === 'completed') {
+    inquiryFilters.status = 'completed';
+  }
+
+  const statusSelect = document.getElementById('inquiryStatusFilter');
+  if (statusSelect) {
+    if (kpiType === 'in_progress') {
+      statusSelect.value = 'all';
+    } else {
+      statusSelect.value = inquiryFilters.status;
+    }
+  }
+
+  applyInquiryFilters();
+}
+
+function resetInquiryFilters() {
+  inquiryFilters.search = '';
+  inquiryFilters.status = 'all';
+  inquiryFilters.variety = 'all';
+  inquiryFilters.sort = 'newest';
+
+  const searchInput = document.getElementById('inquirySearchInput');
+  const clearBtn = document.getElementById('clearSearchBtn');
+  const statusSelect = document.getElementById('inquiryStatusFilter');
+  const varietySelect = document.getElementById('inquiryVarietyFilter');
+  const sortSelect = document.getElementById('inquirySortFilter');
+
+  if (searchInput) searchInput.value = '';
+  if (clearBtn) clearBtn.style.display = 'none';
+  if (statusSelect) statusSelect.value = 'all';
+  if (varietySelect) varietySelect.value = 'all';
+  if (sortSelect) sortSelect.value = 'newest';
+
+  applyInquiryFilters();
+}
+
+function clearSearchFilter() {
+  const searchInput = document.getElementById('inquirySearchInput');
+  const clearSearchBtn = document.getElementById('clearSearchBtn');
+  if (searchInput) searchInput.value = '';
+  if (clearSearchBtn) clearSearchBtn.style.display = 'none';
+  inquiryFilters.search = '';
+  applyInquiryFilters();
+}
+
+function clearStatusFilter() {
+  inquiryFilters.status = 'all';
+  const statusSelect = document.getElementById('inquiryStatusFilter');
+  if (statusSelect) statusSelect.value = 'all';
+  applyInquiryFilters();
+}
+
+function clearVarietyFilter() {
+  inquiryFilters.variety = 'all';
+  const varietySelect = document.getElementById('inquiryVarietyFilter');
+  if (varietySelect) varietySelect.value = 'all';
+  applyInquiryFilters();
+}
+
+function updateKpiCardsAndBadges() {
+  const total = cachedInquiries.length;
+  const newCount = cachedInquiries.filter(i => (i.status || 'new') === 'new').length;
+  const progressCount = cachedInquiries.filter(i => i.status === 'contacted' || i.status === 'in_review').length;
+  const completedCount = cachedInquiries.filter(i => i.status === 'completed').length;
+
+  const totalEl = document.getElementById('totalInquiriesCount');
+  if (totalEl) totalEl.innerText = total;
+
+  const newEl = document.getElementById('newInquiriesCount');
+  if (newEl) newEl.innerText = newCount;
+
+  const kpiNewEl = document.getElementById('kpiNewCount');
+  if (kpiNewEl) kpiNewEl.innerText = newCount;
+
+  const kpiProgEl = document.getElementById('kpiProgressCount');
+  if (kpiProgEl) kpiProgEl.innerText = progressCount;
+
+  const kpiCompEl = document.getElementById('kpiCompletedCount');
+  if (kpiCompEl) kpiCompEl.innerText = completedCount;
+
+  const mobBadge = document.getElementById('mobileSidebarNewBadge');
+  if (mobBadge) {
+    if (newCount > 0) {
+      mobBadge.innerText = newCount;
+      mobBadge.style.display = 'inline-block';
+    } else {
+      mobBadge.style.display = 'none';
+    }
+  }
+
+  document.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('active'));
+  if (inquiryFilters.status === 'all') {
+    document.getElementById('kpiCardAll')?.classList.add('active');
+  } else if (inquiryFilters.status === 'new') {
+    document.getElementById('kpiCardNew')?.classList.add('active');
+  } else if (inquiryFilters.status === 'in_progress') {
+    document.getElementById('kpiCardProgress')?.classList.add('active');
+  } else if (inquiryFilters.status === 'completed') {
+    document.getElementById('kpiCardCompleted')?.classList.add('active');
+  }
+}
+
+function applyInquiryFilters() {
+  updateKpiCardsAndBadges();
+
+  const tbody = document.getElementById('inquiriesTableBody');
+  const mobileContainer = document.getElementById('inquiriesCardsMobile');
+  const countBadge = document.getElementById('filterResultCount');
+  const chipsContainer = document.getElementById('activeFilterPills');
+
+  let filtered = [...cachedInquiries];
+
+  // 1. Search Query Filter
+  const q = (inquiryFilters.search || '').trim().toLowerCase();
+  if (q) {
+    filtered = filtered.filter(item => {
+      const idMatch = String(item.id).toLowerCase().includes(q);
+      const nameMatch = (item.full_name || '').toLowerCase().includes(q);
+      const companyMatch = (item.company_name || '').toLowerCase().includes(q);
+      const emailMatch = (item.email || '').toLowerCase().includes(q);
+      const phoneMatch = ((item.country_code || '') + (item.mobile_number || '')).toLowerCase().includes(q);
+      const varietyMatch = (item.product_variety || '').toLowerCase().includes(q);
+      const destMatch = (item.destination || '').toLowerCase().includes(q);
+      const msgMatch = (item.message || '').toLowerCase().includes(q);
+      return idMatch || nameMatch || companyMatch || emailMatch || phoneMatch || varietyMatch || destMatch || msgMatch;
+    });
+  }
+
+  // 2. Status Filter
+  if (inquiryFilters.status && inquiryFilters.status !== 'all') {
+    if (inquiryFilters.status === 'in_progress') {
+      filtered = filtered.filter(item => item.status === 'contacted' || item.status === 'in_review');
+    } else {
+      filtered = filtered.filter(item => (item.status || 'new') === inquiryFilters.status);
+    }
+  }
+
+  // 3. Variety Filter
+  if (inquiryFilters.variety && inquiryFilters.variety !== 'all') {
+    const varFilterLower = inquiryFilters.variety.toLowerCase();
+    filtered = filtered.filter(item => (item.product_variety || '').toLowerCase().includes(varFilterLower));
+  }
+
+  // 4. Sort
+  filtered.sort((a, b) => {
+    switch (inquiryFilters.sort) {
+      case 'oldest':
+        return new Date(a.created_at) - new Date(b.created_at);
+      case 'name_asc':
+        return (a.full_name || '').localeCompare(b.full_name || '');
+      case 'name_desc':
+        return (b.full_name || '').localeCompare(a.full_name || '');
+      case 'qty_desc': {
+        const qA = parseFloat(String(a.quantity || '0').replace(/[^0-9.]/g, '')) || 0;
+        const qB = parseFloat(String(b.quantity || '0').replace(/[^0-9.]/g, '')) || 0;
+        return qB - qA;
+      }
+      case 'qty_asc': {
+        const qA = parseFloat(String(a.quantity || '0').replace(/[^0-9.]/g, '')) || 0;
+        const qB = parseFloat(String(b.quantity || '0').replace(/[^0-9.]/g, '')) || 0;
+        return qA - qB;
+      }
+      case 'newest':
+      default:
+        return new Date(b.created_at) - new Date(a.created_at);
+    }
+  });
+
+  // Update Result Count Label
+  if (countBadge) {
+    if (cachedInquiries.length === 0) {
+      countBadge.innerText = '0 inquiries received';
+    } else if (filtered.length === cachedInquiries.length) {
+      countBadge.innerText = `Showing all ${filtered.length} leads & quotations`;
+    } else {
+      countBadge.innerHTML = `Showing <strong>${filtered.length}</strong> of ${cachedInquiries.length} leads`;
+    }
+  }
+
+  // Render Active Filter Chips
+  if (chipsContainer) {
+    const chips = [];
+    if (q) {
+      chips.push(`<span class="filter-chip">Search: "${escapeHtml(q)}" <button type="button" class="filter-chip-remove" onclick="clearSearchFilter()" aria-label="Clear search filter">&times;</button></span>`);
+    }
+    if (inquiryFilters.status && inquiryFilters.status !== 'all') {
+      const label = inquiryFilters.status === 'new' ? 'New' : inquiryFilters.status === 'in_progress' ? 'In Progress' : inquiryFilters.status === 'completed' ? 'Completed' : inquiryFilters.status;
+      chips.push(`<span class="filter-chip">Status: ${escapeHtml(label)} <button type="button" class="filter-chip-remove" onclick="clearStatusFilter()" aria-label="Clear status filter">&times;</button></span>`);
+    }
+    if (inquiryFilters.variety && inquiryFilters.variety !== 'all') {
+      chips.push(`<span class="filter-chip">Variety: ${escapeHtml(inquiryFilters.variety)} <button type="button" class="filter-chip-remove" onclick="clearVarietyFilter()" aria-label="Clear variety filter">&times;</button></span>`);
+    }
+    chipsContainer.innerHTML = chips.join('');
+  }
+
+  // Handle Empty State
+  if (filtered.length === 0) {
+    const emptyHtml = `
+      <div style="text-align: center; color: #64748b; padding: 3rem 1.5rem; background: #ffffff; border-radius: 12px; border: 1px solid var(--border-light); width: 100%;">
+        <div style="font-size: 2.25rem; margin-bottom: 0.5rem;">🔍</div>
+        <div style="font-weight: 700; font-size: 1.1rem; color: #0f172a; margin-bottom: 0.25rem;">No matching wholesale inquiries found</div>
+        <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Try relaxing your search terms or clearing current filter criteria.</div>
+        <button type="button" class="btn btn-sm btn-primary" onclick="resetInquiryFilters()">Reset All Filters</button>
+      </div>`;
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="7" style="padding: 1rem 0; border: none;">${emptyHtml}</td></tr>`;
+    }
+    if (mobileContainer) {
+      mobileContainer.innerHTML = emptyHtml;
+    }
     return;
   }
 
-  container.innerHTML = cachedGalleryItems.map(item => `
-    <div class="admin-card" style="padding: 1.25rem; margin-bottom: 0; display: flex; flex-direction: column;">
-      <div style="height: 175px; overflow: hidden; border-radius: 10px; margin-bottom: 1rem; background: #e2e8f0; position: relative;">
-        <img src="${resolveImageUrl(item.image_url)}" alt="${escapeHtml(item.title)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/images/logo/vpsa-yoga-logo.png'" />
-        <span class="status-pill status-contacted" style="position: absolute; top: 0.65rem; right: 0.65rem; background: rgba(255, 255, 255, 0.92); font-size: 0.7rem; box-shadow: 0 2px 6px rgba(0,0,0,0.15); text-transform: uppercase;">${escapeHtml(item.category)}</span>
+  // Render Desktop Table Rows
+  if (tbody) {
+    tbody.innerHTML = filtered.map(item => {
+      const consentTs = item.consent_at || item.dpdp_consent_timestamp || item.created_at;
+      const consentBadge = item.dpdp_consent !== false
+        ? `<span style="background: #ecfdf5; color: #047857; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 3px; font-weight: 600; border: 1px solid #a7f3d0;" title="DPDP Act 2023 Consent Granted at: ${new Date(consentTs).toLocaleString()}">🛡️ DPDP Verified</span>`
+        : `<span style="background: #fef2f2; color: #b91c1c; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 3px; font-weight: 600; border: 1px solid #fecaca;">⚠️ Unverified</span>`;
+
+      return `
+      <tr>
+        <td>
+          <strong style="color: var(--primary);">#${item.id}</strong><br>
+          <small style="color: #64748b; font-size: 0.785rem;">${new Date(item.created_at).toLocaleDateString()}</small><br>
+          ${consentBadge}
+        </td>
+        <td>
+          <strong style="color: #0f172a; font-size: 0.925rem;">${escapeHtml(item.full_name)}</strong><br>
+          <small style="color: #64748b;">${escapeHtml(item.company_name || 'Individual Buyer')}</small>
+        </td>
+        <td>
+          <a href="mailto:${escapeHtml(item.email)}" style="color: var(--primary); font-weight: 600; text-decoration: underline;">${escapeHtml(item.email)}</a><br>
+          <a href="tel:${escapeHtml(item.country_code || '')}${escapeHtml(item.mobile_number || '')}" style="color: #475569; font-size: 0.85rem;">${escapeHtml(item.country_code || '')} ${escapeHtml(item.mobile_number || '')}</a>
+        </td>
+        <td>
+          <span style="font-weight: 700; color: #0f172a;">${escapeHtml(item.product_variety || 'General Bulk')}</span><br>
+          <small style="color: #64748b;">Qty: <strong>${escapeHtml(item.quantity || 'N/A')}</strong><br>Dest: <strong>${escapeHtml(item.destination || 'N/A')}</strong></small>
+        </td>
+        <td style="max-width: 240px; font-size: 0.85rem; color: #334155; line-height: 1.5;">
+          ${escapeHtml(item.message)}
+        </td>
+        <td>
+          <select class="form-control" style="padding: 0.35rem 0.6rem; font-size: 0.825rem; font-weight: 600; border-radius: 6px; cursor: pointer;" onchange="updateInquiryStatus(${item.id}, this.value)">
+            <option value="new" ${item.status === 'new' ? 'selected' : ''}>🟡 New</option>
+            <option value="contacted" ${item.status === 'contacted' ? 'selected' : ''}>🔵 Contacted</option>
+            <option value="in_review" ${item.status === 'in_review' ? 'selected' : ''}>🟣 In Review</option>
+            <option value="completed" ${item.status === 'completed' ? 'selected' : ''}>🟢 Completed</option>
+          </select>
+        </td>
+        <td style="text-align: center; white-space: nowrap;">
+          <button type="button" class="btn btn-sm btn-outline" style="padding: 0.35rem 0.55rem; margin-right: 4px;" onclick="viewInquiryDetails(${item.id})" title="View Complete Lead Details">👁️</button>
+          <button type="button" class="btn btn-sm btn-outline" style="color: #ef4444; border-color: #fca5a5; padding: 0.35rem 0.55rem; background: #fff1f2;" onclick="deleteInquiry(${item.id})" title="Delete lead">🗑️</button>
+        </td>
+      </tr>
+      `;
+    }).join('');
+  }
+
+  // Render Mobile Cards View
+  if (mobileContainer) {
+    mobileContainer.innerHTML = filtered.map(item => {
+      const consentTs = item.consent_at || item.dpdp_consent_timestamp || item.created_at;
+      const consentBadge = item.dpdp_consent !== false
+        ? `<span style="background: #ecfdf5; color: #047857; font-size: 0.685rem; padding: 2px 6px; border-radius: 4px; display: inline-block; font-weight: 600; border: 1px solid #a7f3d0;">🛡️ DPDP Verified</span>`
+        : `<span style="background: #fef2f2; color: #b91c1c; font-size: 0.685rem; padding: 2px 6px; border-radius: 4px; display: inline-block; font-weight: 600; border: 1px solid #fecaca;">⚠️ Unverified</span>`;
+
+      const cleanPhone = formatPhoneClean(item.country_code, item.mobile_number);
+      const waDigits = formatPhoneForWa(item.country_code, item.mobile_number);
+      const waText = encodeURIComponent(`Hello ${item.full_name || ''}, thank you for contacting VPSA YOGA regarding wholesale bananas (${item.product_variety || 'bulk'}). How can we assist with your requirements?`);
+
+      return `
+      <div class="inquiry-mobile-card">
+        <div class="inquiry-card-header">
+          <div>
+            <span class="inquiry-id-badge">#${item.id}</span>
+            <span class="inquiry-date">${new Date(item.created_at).toLocaleDateString()}</span>
+          </div>
+          <select class="inquiry-status-select-sm" onchange="updateInquiryStatus(${item.id}, this.value)">
+            <option value="new" ${item.status === 'new' ? 'selected' : ''}>🟡 New</option>
+            <option value="contacted" ${item.status === 'contacted' ? 'selected' : ''}>🔵 Contacted</option>
+            <option value="in_review" ${item.status === 'in_review' ? 'selected' : ''}>🟣 In Review</option>
+            <option value="completed" ${item.status === 'completed' ? 'selected' : ''}>🟢 Completed</option>
+          </select>
+        </div>
+
+        <div class="inquiry-client-row">
+          <div class="inquiry-client-name">${escapeHtml(item.full_name)}</div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <span class="inquiry-company-name">${escapeHtml(item.company_name || 'Individual Buyer')}</span>
+            ${consentBadge}
+          </div>
+        </div>
+
+        <div class="inquiry-specs-grid">
+          <div class="inquiry-spec-item">
+            <span class="spec-label">Variety</span>
+            <span class="spec-val highlight" title="${escapeHtml(item.product_variety || 'General Bulk')}">${escapeHtml(item.product_variety || 'General Bulk')}</span>
+          </div>
+          <div class="inquiry-spec-item">
+            <span class="spec-label">Volume</span>
+            <span class="spec-val">${escapeHtml(item.quantity || 'N/A')}</span>
+          </div>
+          <div class="inquiry-spec-item">
+            <span class="spec-label">Destination</span>
+            <span class="spec-val" title="${escapeHtml(item.destination || 'N/A')}">${escapeHtml(item.destination || 'N/A')}</span>
+          </div>
+        </div>
+
+        <div class="inquiry-quick-actions">
+          ${waDigits ? `
+            <a href="https://wa.me/${waDigits}?text=${waText}" target="_blank" rel="noopener noreferrer" class="quick-action-btn quick-action-wa" title="Open WhatsApp Chat">
+              <span>💬</span> WhatsApp
+            </a>
+          ` : `<button type="button" class="quick-action-btn quick-action-wa" disabled style="opacity: 0.5;">💬 WhatsApp</button>`}
+
+          ${cleanPhone ? `
+            <a href="tel:${cleanPhone}" class="quick-action-btn quick-action-call" title="Call ${cleanPhone}">
+              <span>📞</span> Call
+            </a>
+          ` : `<button type="button" class="quick-action-btn quick-action-call" disabled style="opacity: 0.5;">📞 Call</button>`}
+
+          ${item.email ? `
+            <a href="mailto:${escapeHtml(item.email)}" class="quick-action-btn quick-action-email" title="Email ${escapeHtml(item.email)}">
+              <span>✉️</span> Email
+            </a>
+          ` : `<button type="button" class="quick-action-btn quick-action-email" disabled style="opacity: 0.5;">✉️ Email</button>`}
+        </div>
+
+        ${item.message ? `
+          <div class="inquiry-message-preview">
+            <strong>Requirements:</strong> ${escapeHtml(item.message)}
+          </div>
+        ` : ''}
+
+        <div class="inquiry-card-footer">
+          <button type="button" class="btn btn-sm btn-outline" style="flex: 1;" onclick="viewInquiryDetails(${item.id})">
+            👁️ View Full Details
+          </button>
+          <button type="button" class="btn btn-sm btn-outline" style="color: #ef4444; border-color: #fca5a5; background: #fff1f2; padding: 0.35rem 0.65rem;" onclick="deleteInquiry(${item.id})" title="Delete Inquiry">
+            🗑️
+          </button>
+        </div>
       </div>
-      <h4 style="font-size: 1.1rem; font-weight: 800; color: #0f172a; margin-bottom: 0.35rem; line-height: 1.3;">${escapeHtml(item.title)}</h4>
-      <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1.25rem; flex-grow: 1; line-height: 1.5; min-height: 42px;">${escapeHtml(item.description || 'No description provided.')}</p>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; margin-top: auto;">
-        <button type="button" class="btn btn-sm btn-outline" data-action="edit" data-id="${item.id}" onclick="openEditModalById(event, ${item.id})">✏️ Edit</button>
-        <button type="button" class="btn btn-sm btn-outline" data-action="delete" data-id="${item.id}" onclick="deleteGalleryItem(event, ${item.id})" style="color: #ef4444; border-color: #fca5a5; background-color: #fff1f2;">🗑️ Delete</button>
-      </div>
-    </div>
-  `).join('');
+      `;
+    }).join('');
+  }
 }
 
 // 4. Inquiries Loader & Operations
@@ -1719,60 +2291,7 @@ async function loadAdminInquiries() {
     cachedInquiries = [...window.__EMBEDDED_INQUIRIES__];
   }
 
-  const totalEl = document.getElementById('totalInquiriesCount');
-  if (totalEl) totalEl.innerText = cachedInquiries.length;
-  
-  const newCount = cachedInquiries.filter(i => i.status === 'new').length;
-  const newEl = document.getElementById('newInquiriesCount');
-  if (newEl) newEl.innerText = newCount;
-
-  if (cachedInquiries.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #64748b; padding: 3rem; font-size: 0.95rem;">No wholesale inquiries received yet.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = cachedInquiries.map(item => {
-    const consentTs = item.consent_at || item.dpdp_consent_timestamp || item.created_at;
-    const consentBadge = item.dpdp_consent !== false
-      ? `<span style="background: #ecfdf5; color: #047857; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 3px; font-weight: 600; border: 1px solid #a7f3d0;" title="DPDP Act 2023 Consent Granted at: ${new Date(consentTs).toLocaleString()}">🛡️ DPDP Verified</span>`
-      : `<span style="background: #fef2f2; color: #b91c1c; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 3px; font-weight: 600; border: 1px solid #fecaca;">⚠️ Unverified</span>`;
-
-    return `
-    <tr>
-      <td>
-        <strong style="color: var(--primary);">#${item.id}</strong><br>
-        <small style="color: #64748b; font-size: 0.785rem;">${new Date(item.created_at).toLocaleDateString()}</small><br>
-        ${consentBadge}
-      </td>
-      <td>
-        <strong style="color: #0f172a; font-size: 0.925rem;">${escapeHtml(item.full_name)}</strong><br>
-        <small style="color: #64748b;">${escapeHtml(item.company_name || 'Individual Buyer')}</small>
-      </td>
-      <td>
-        <a href="mailto:${escapeHtml(item.email)}" style="color: var(--primary); font-weight: 600; text-decoration: underline;">${escapeHtml(item.email)}</a><br>
-        <a href="tel:${escapeHtml(item.country_code || '')}${escapeHtml(item.mobile_number || '')}" style="color: #475569; font-size: 0.85rem;">${escapeHtml(item.country_code || '')} ${escapeHtml(item.mobile_number || '')}</a>
-      </td>
-      <td>
-        <span style="font-weight: 700; color: #0f172a;">${escapeHtml(item.product_variety || 'General Bulk')}</span><br>
-        <small style="color: #64748b;">Qty: <strong>${escapeHtml(item.quantity || 'N/A')}</strong><br>Dest: <strong>${escapeHtml(item.destination || 'N/A')}</strong></small>
-      </td>
-      <td style="max-width: 240px; font-size: 0.85rem; color: #334155; line-height: 1.5;">
-        ${escapeHtml(item.message)}
-      </td>
-      <td>
-        <select class="form-control" style="padding: 0.35rem 0.6rem; font-size: 0.825rem; font-weight: 600; border-radius: 6px; cursor: pointer;" onchange="updateInquiryStatus(${item.id}, this.value)">
-          <option value="new" ${item.status === 'new' ? 'selected' : ''}>🟡 New</option>
-          <option value="contacted" ${item.status === 'contacted' ? 'selected' : ''}>🔵 Contacted</option>
-          <option value="in_review" ${item.status === 'in_review' ? 'selected' : ''}>🟣 In Review</option>
-          <option value="completed" ${item.status === 'completed' ? 'selected' : ''}>🟢 Completed</option>
-        </select>
-      </td>
-      <td style="text-align: center; white-space: nowrap;">
-        <button type="button" class="btn btn-sm btn-outline" style="padding: 0.35rem 0.55rem; margin-right: 4px;" onclick="viewInquiryDetails(${item.id})" title="View Complete Lead Details">👁️</button>
-        <button type="button" class="btn btn-sm btn-outline" style="color: #ef4444; border-color: #fca5a5; padding: 0.35rem 0.55rem; background: #fff1f2;" onclick="deleteInquiry(${item.id})" title="Delete lead">🗑️</button>
-      </td>
-    </tr>
-  `}).join('');
+  applyInquiryFilters();
 }
 
 async function updateInquiryStatus(id, status) {
@@ -1917,6 +2436,8 @@ async function loadAdminAuditLogs() {
 
   if (logs.length === 0) {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #64748b; padding: 2rem;">No activity log records found.</td></tr>`;
+    const mobileAudit = document.getElementById('auditCardsMobile');
+    if (mobileAudit) mobileAudit.innerHTML = `<div style="text-align: center; color: #64748b; padding: 2rem; background: #fff; border-radius: 8px;">No activity log records found.</div>`;
     return;
   }
 
@@ -1929,6 +2450,24 @@ async function loadAdminAuditLogs() {
       <td><code style="font-family: monospace; color: #0284c7; background: #f0f9ff; padding: 0.2rem 0.45rem; border-radius: 4px; font-size: 0.8rem;">${escapeHtml(log.ip_address || '127.0.0.1')}</code></td>
     </tr>
   `).join('');
+
+  // Render Mobile Audit Trail Cards
+  const mobileAudit = document.getElementById('auditCardsMobile');
+  if (mobileAudit) {
+    mobileAudit.innerHTML = logs.map(log => `
+      <div class="audit-mobile-card">
+        <div class="audit-card-top">
+          <span class="status-pill ${log.severity === 'CRITICAL' ? 'status-new' : log.severity === 'WARN' ? 'status-contacted' : 'status-completed'}">${escapeHtml(log.event_type)}</span>
+          <span class="audit-card-time">${new Date(log.created_at).toLocaleString()}</span>
+        </div>
+        <div class="audit-card-desc">${escapeHtml(log.description)}</div>
+        <div class="audit-card-bottom">
+          <span>Actor: <strong style="color: #0f172a;">${escapeHtml(log.username || 'admin')}</strong></span>
+          <code style="font-family: monospace; color: #0284c7; background: #f0f9ff; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.75rem;">${escapeHtml(log.ip_address || '127.0.0.1')}</code>
+        </div>
+      </div>
+    `).join('');
+  }
 }
 
 // 6. Universal Two-Way Synchronizer for Admin Panel
@@ -1961,6 +2500,9 @@ function viewInquiryDetails(id) {
   const consentTs = item.consent_at || item.dpdp_consent_timestamp || item.created_at;
   const consentFormatted = consentTs ? new Date(consentTs).toLocaleString() : 'Recorded with Submission';
   const createdFormatted = item.created_at ? new Date(item.created_at).toLocaleString() : 'N/A';
+  const cleanPhone = formatPhoneClean(item.country_code, item.mobile_number);
+  const waDigits = formatPhoneForWa(item.country_code, item.mobile_number);
+  const waText = encodeURIComponent(`Hello ${item.full_name || ''}, thank you for contacting VPSA YOGA regarding wholesale bananas (${item.product_variety || 'bulk'}). How can we assist with your requirements?`);
 
   body.innerHTML = `
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
@@ -1973,7 +2515,11 @@ function viewInquiryDetails(id) {
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
         <strong style="color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.35rem;">Contact Channels</strong>
         <div>Email: <a href="mailto:${escapeHtml(item.email)}" style="color: var(--primary); font-weight: 600; text-decoration: underline;">${escapeHtml(item.email)}</a></div>
-        <div style="margin-top: 3px;">Mobile: <a href="tel:${escapeHtml(item.country_code || '')}${escapeHtml(item.mobile_number || '')}" style="color: #0284c7; font-weight: 600;">${escapeHtml(item.country_code || '')} ${escapeHtml(item.mobile_number || '')}</a></div>
+        <div style="margin-top: 3px;">Mobile: <a href="tel:${cleanPhone}" style="color: #0284c7; font-weight: 600;">${escapeHtml(item.country_code || '')} ${escapeHtml(item.mobile_number || '')}</a></div>
+        <div style="margin-top: 8px; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          ${waDigits ? `<a href="https://wa.me/${waDigits}?text=${waText}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; background: #059669; border-color: #059669;">💬 Chat WhatsApp</a>` : ''}
+          ${cleanPhone ? `<a href="tel:${cleanPhone}" class="btn btn-sm btn-outline" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">📞 Call</a>` : ''}
+        </div>
       </div>
     </div>
 
@@ -2048,15 +2594,43 @@ function closeInquiryDetailModal() {
   if (modal) modal.style.display = 'none';
 }
 
-// Export Inquiries as CSV
+// Export Inquiries as CSV (Exports filtered set if active, otherwise all)
 function exportInquiriesCSV() {
   if (!cachedInquiries || cachedInquiries.length === 0) {
     showToast('No inquiries available to export.', 'error');
     return;
   }
 
+  let exportData = cachedInquiries;
+  const isFiltered = (inquiryFilters.search || inquiryFilters.status !== 'all' || inquiryFilters.variety !== 'all');
+  if (isFiltered) {
+    const q = (inquiryFilters.search || '').trim().toLowerCase();
+    exportData = cachedInquiries.filter(item => {
+      if (q) {
+        const idMatch = String(item.id).toLowerCase().includes(q);
+        const nameMatch = (item.full_name || '').toLowerCase().includes(q);
+        const companyMatch = (item.company_name || '').toLowerCase().includes(q);
+        const emailMatch = (item.email || '').toLowerCase().includes(q);
+        const phoneMatch = ((item.country_code || '') + (item.mobile_number || '')).toLowerCase().includes(q);
+        const varietyMatch = (item.product_variety || '').toLowerCase().includes(q);
+        if (!idMatch && !nameMatch && !companyMatch && !emailMatch && !phoneMatch && !varietyMatch) return false;
+      }
+      if (inquiryFilters.status && inquiryFilters.status !== 'all') {
+        if (inquiryFilters.status === 'in_progress') {
+          if (item.status !== 'contacted' && item.status !== 'in_review') return false;
+        } else if ((item.status || 'new') !== inquiryFilters.status) {
+          return false;
+        }
+      }
+      if (inquiryFilters.variety && inquiryFilters.variety !== 'all') {
+        if (!(item.product_variety || '').toLowerCase().includes(inquiryFilters.variety.toLowerCase())) return false;
+      }
+      return true;
+    });
+  }
+
   const headers = ['ID', 'Date', 'Full Name', 'Company', 'Email', 'Mobile', 'Variety', 'Quantity', 'Destination', 'Status', 'Message', 'DPDP Consent', 'Consent Timestamp', 'Consent Version'];
-  const rows = cachedInquiries.map(item => [
+  const rows = exportData.map(item => [
     item.id,
     new Date(item.created_at).toLocaleDateString(),
     `"${(item.full_name || '').replace(/"/g, '""')}"`,
@@ -2077,11 +2651,11 @@ function exportInquiriesCSV() {
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement('a');
   link.setAttribute('href', encodedUri);
-  link.setAttribute('download', `VPSA_Banana_Wholesale_Leads_${new Date().toISOString().slice(0,10)}.csv`);
+  link.setAttribute('download', `VPSA_Banana_Wholesale_Leads_${exportData.length}records_${new Date().toISOString().slice(0,10)}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  showToast('Leads exported successfully as CSV!', 'success');
+  showToast(`Exported ${exportData.length} lead records to CSV!`, 'success');
 }
 
 // Global exposure
@@ -2102,6 +2676,12 @@ window.syncAllAdminData = syncAllAdminData;
 window.switchTab = switchTab;
 window.viewInquiryDetails = viewInquiryDetails;
 window.closeInquiryDetailModal = closeInquiryDetailModal;
+window.filterByKpi = filterByKpi;
+window.resetInquiryFilters = resetInquiryFilters;
+window.filterGalleryByCategory = filterGalleryByCategory;
+window.clearSearchFilter = clearSearchFilter;
+window.clearStatusFilter = clearStatusFilter;
+window.clearVarietyFilter = clearVarietyFilter;
 
 // Multi-step 2FA login state
 let currentTempToken = null;
@@ -2901,15 +3481,104 @@ function initAdmin() {
         });
     }
 
-    // Navigation Tabs
+    // Mobile Drawer Setup
+    const sidebar = document.getElementById('adminSidebar');
+    const toggleBtn = document.getElementById('adminSidebarToggle');
+    const closeBtn = document.getElementById('adminSidebarCloseBtn');
+    const backdrop = document.getElementById('adminSidebarBackdrop');
+    const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
+
+    function openMobileSidebar() {
+      if (sidebar) sidebar.classList.add('mobile-open');
+      if (backdrop) backdrop.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeMobileSidebar() {
+      if (sidebar) sidebar.classList.remove('mobile-open');
+      if (backdrop) backdrop.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    if (toggleBtn) toggleBtn.addEventListener('click', openMobileSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeMobileSidebar);
+    if (backdrop) backdrop.addEventListener('click', closeMobileSidebar);
+
+    if (mobileLogoutBtn) {
+      mobileLogoutBtn.addEventListener('click', () => {
+        const desktopLogout = document.getElementById('adminLogoutBtn');
+        if (desktopLogout) desktopLogout.click();
+      });
+    }
+
+    // Navigation Tabs (with auto-close on mobile)
     const navLinks = document.querySelectorAll('.admin-nav-link[data-tab]');
     navLinks.forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
         const targetTab = link.getAttribute('data-tab');
         switchTab(targetTab);
+        closeMobileSidebar();
       });
     });
+
+    // Wholesale Inquiry Filter & Search Event Listeners
+    const searchInput = document.getElementById('inquirySearchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const statusSelect = document.getElementById('inquiryStatusFilter');
+    const varietySelect = document.getElementById('inquiryVarietyFilter');
+    const sortSelect = document.getElementById('inquirySortFilter');
+    const resetFiltersBtn = document.getElementById('resetInquiryFiltersBtn');
+
+    let searchDebounceTimer = null;
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        const val = e.target.value;
+        if (clearSearchBtn) {
+          clearSearchBtn.style.display = val ? 'flex' : 'none';
+        }
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(() => {
+          inquiryFilters.search = val;
+          applyInquiryFilters();
+        }, 180);
+      });
+    }
+
+    if (clearSearchBtn) {
+      clearSearchBtn.addEventListener('click', () => {
+        if (searchInput) searchInput.value = '';
+        clearSearchBtn.style.display = 'none';
+        inquiryFilters.search = '';
+        applyInquiryFilters();
+        if (searchInput) searchInput.focus();
+      });
+    }
+
+    if (statusSelect) {
+      statusSelect.addEventListener('change', (e) => {
+        inquiryFilters.status = e.target.value;
+        applyInquiryFilters();
+      });
+    }
+
+    if (varietySelect) {
+      varietySelect.addEventListener('change', (e) => {
+        inquiryFilters.variety = e.target.value;
+        applyInquiryFilters();
+      });
+    }
+
+    if (sortSelect) {
+      sortSelect.addEventListener('change', (e) => {
+        inquiryFilters.sort = e.target.value;
+        applyInquiryFilters();
+      });
+    }
+
+    if (resetFiltersBtn) {
+      resetFiltersBtn.addEventListener('click', resetInquiryFilters);
+    }
 
     // Logout button
     const logoutBtn = document.getElementById('adminLogoutBtn');
