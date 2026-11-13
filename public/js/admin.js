@@ -992,18 +992,26 @@ function initAdmin() {
       showError('🔒 Session expired due to 5 minutes of inactivity. Please log in again.');
     }
 
-    // Check for Supabase Auth recovery token in URL hash or query params
+    // Check for Supabase Auth recovery token or error in URL hash or query params
     let recoveryAccessToken = null;
     try {
       const hashStr = window.location.hash.startsWith('#') ? window.location.hash.substring(1) : window.location.hash;
-      if (hashStr) {
-        const hashParams = new URLSearchParams(hashStr);
-        if (hashParams.get('type') === 'recovery' && hashParams.get('access_token')) {
+      const hashParams = hashStr ? new URLSearchParams(hashStr) : null;
+
+      // Check for error parameters in hash or query (e.g. expired link)
+      const errorDesc = (hashParams && hashParams.get('error_description')) || urlParams.get('error_description');
+      const errorCode = (hashParams && hashParams.get('error_code')) || urlParams.get('error_code');
+      const errorType = (hashParams && hashParams.get('error')) || urlParams.get('error');
+
+      if (errorDesc || errorCode || errorType) {
+        const displayErr = errorDesc ? decodeURIComponent(errorDesc).replace(/\+/g, ' ') : 'Password recovery link is invalid or has expired. Please request a new one.';
+        showError('⚠️ ' + displayErr);
+      } else {
+        if (hashParams && hashParams.get('type') === 'recovery' && hashParams.get('access_token')) {
           recoveryAccessToken = hashParams.get('access_token');
-        }
-      }
-      if (!recoveryAccessToken) {
-        if (urlParams.get('type') === 'recovery' && urlParams.get('token')) {
+        } else if (hashParams && hashParams.get('access_token')) {
+          recoveryAccessToken = hashParams.get('access_token');
+        } else if (urlParams.get('type') === 'recovery' && urlParams.get('token')) {
           recoveryAccessToken = urlParams.get('token');
         }
       }
@@ -1302,13 +1310,15 @@ function initAdmin() {
     if (resetPassForm) {
       resetPassForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const email = document.getElementById('resetEmail')?.value?.trim();
+        const rawInput = document.getElementById('resetEmail')?.value?.trim() || '';
         const submitBtn = document.getElementById('resetPasswordSubmitBtn');
 
-        if (!email) {
+        if (!rawInput) {
           showError('Please enter your administrator email address.');
           return;
         }
+
+        const email = rawInput.includes('@') ? rawInput : getResolvedAdminEmail();
 
         const lastReset = Number(sessionStorage.getItem('vpsa_last_reset_request') || 0);
         if (Date.now() - lastReset < 60000) {
@@ -1338,7 +1348,8 @@ function initAdmin() {
 
         // 2. Cloud Fallback via Supabase Auth
         try {
-          const supaRes = await fetch(`${SUPABASE_ADMIN_CONFIG.url}/auth/v1/recover`, {
+          const redirectUrl = `${window.location.origin}/admin-login`;
+          const supaRes = await fetch(`${SUPABASE_ADMIN_CONFIG.url}/auth/v1/recover?redirect_to=${encodeURIComponent(redirectUrl)}`, {
             method: 'POST',
             headers: {
               'apikey': SUPABASE_ADMIN_CONFIG.anonKey,
@@ -1348,11 +1359,21 @@ function initAdmin() {
           });
           if (supaRes.ok) {
             resetDispatched = true;
+          } else {
+            const data = await supaRes.json().catch(() => ({}));
+            if (supaRes.status === 429 || (data.msg && data.msg.includes('rate limit'))) {
+              showError('Rate limit: Supabase allows 1 recovery request per minute. Please check your email inbox.');
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Send Password Reset Link';
+              }
+              return;
+            }
           }
         } catch (err) {}
 
         sessionStorage.setItem('vpsa_last_reset_request', String(Date.now()));
-        showSuccess('If this email address is registered as an administrator, password recovery instructions have been dispatched.');
+        showSuccess(`If ${email} is registered as an administrator, password recovery instructions have been dispatched. Please check your email inbox.`);
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.innerText = 'Send Password Reset Link';

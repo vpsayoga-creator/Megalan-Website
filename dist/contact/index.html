@@ -2165,6 +2165,19 @@
  * Variety Details Popup Modal (Live Gallery Pattern), and Clean URL Normalizer
  */
 
+// Immediate check for Supabase Auth recovery tokens on public-facing pages
+(function checkAuthRecoveryRedirect() {
+  try {
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    if (hash.includes('type=recovery') || hash.includes('access_token=') || search.includes('type=recovery')) {
+      if (!window.location.pathname.includes('admin-login')) {
+        window.location.replace('/admin-login' + search + hash);
+      }
+    }
+  } catch (e) {}
+})();
+
 // Global Banana Varieties Master Catalog (Used for Variety Lightbox Popups)
 const BANANA_VARIETIES = {
   'red-banana': {
