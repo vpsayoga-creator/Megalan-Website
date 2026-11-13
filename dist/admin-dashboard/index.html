@@ -2572,6 +2572,76 @@ function initAdmin() {
       });
     }
 
+    // Verify OTP / Token button in Forgot Password section
+    const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+    if (verifyOtpBtn) {
+      verifyOtpBtn.addEventListener('click', async () => {
+        const inputVal = document.getElementById('recoveryOtpCode')?.value?.trim();
+        if (!inputVal) {
+          showError('Please enter the verification code or token from your email.');
+          return;
+        }
+
+        // If the user pasted a full URL or token fragment containing access_token= or token=
+        if (inputVal.includes('access_token=') || inputVal.includes('token=')) {
+          let extractedToken = null;
+          try {
+            if (inputVal.includes('#')) {
+              const hash = inputVal.split('#')[1];
+              extractedToken = new URLSearchParams(hash).get('access_token');
+            } else if (inputVal.includes('?')) {
+              const query = inputVal.split('?')[1];
+              extractedToken = new URLSearchParams(query).get('token') || new URLSearchParams(query).get('access_token');
+            }
+          } catch (e) {}
+          if (extractedToken) {
+            recoveryAccessToken = extractedToken;
+            if (resetPassSection) resetPassSection.style.display = 'none';
+            if (setNewPassSection) setNewPassSection.style.display = 'block';
+            showSuccess('Identity verified! Please set your new password.');
+            return;
+          }
+        }
+
+        verifyOtpBtn.disabled = true;
+        verifyOtpBtn.innerText = 'Verifying code...';
+
+        const rawEmail = document.getElementById('resetEmail')?.value?.trim() || '';
+        const email = rawEmail.includes('@') ? rawEmail : getResolvedAdminEmail();
+
+        try {
+          const res = await fetch(`${SUPABASE_ADMIN_CONFIG.url}/auth/v1/verify`, {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_ADMIN_CONFIG.anonKey,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              type: 'recovery',
+              email: email,
+              token: inputVal
+            })
+          });
+
+          const data = await res.json();
+          if (res.ok && data.access_token) {
+            recoveryAccessToken = data.access_token;
+            if (resetPassSection) resetPassSection.style.display = 'none';
+            if (setNewPassSection) setNewPassSection.style.display = 'block';
+            showSuccess('Identity verified! Please set your new password.');
+            return;
+          } else {
+            showError(data.error_description || data.msg || 'Invalid verification code. Please check your email.');
+          }
+        } catch (e) {
+          showError('Error connecting to authentication server.');
+        } finally {
+          verifyOtpBtn.disabled = false;
+          verifyOtpBtn.innerText = 'Verify Code & Set New Password';
+        }
+      });
+    }
+
     // Set New Password Form Submission
     const setNewPassForm = document.getElementById('setNewPasswordForm');
     if (setNewPassForm) {

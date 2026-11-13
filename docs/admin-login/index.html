@@ -143,6 +143,18 @@
         </button>
       </form>
 
+      <div style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px dashed #cbd5e1;">
+        <div style="text-align: center; margin-bottom: 0.75rem;">
+          <p style="font-size: 0.825rem; color: var(--text-muted); margin-bottom: 0.5rem;">Received a 6-digit recovery code or token in your email?</p>
+        </div>
+        <div class="form-group">
+          <input type="text" id="recoveryOtpCode" class="form-control" placeholder="Enter code or paste token link" style="text-align: center; font-size: 1.05rem; letter-spacing: 2px; font-weight: 700;">
+        </div>
+        <button type="button" id="verifyOtpBtn" class="btn btn-outline" style="width: 100%; padding: 0.65rem;">
+          Verify Code &amp; Set New Password
+        </button>
+      </div>
+
       <div style="margin-top: 1.25rem; text-align: center;">
         <button type="button" onclick="resetToStep1()" style="background: none; border: none; font-size: 0.825rem; color: #64748b; cursor: pointer;">← Back to Login</button>
       </div>
@@ -2393,6 +2405,76 @@ function initAdmin() {
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.innerText = 'Send Password Reset Link';
+        }
+      });
+    }
+
+    // Verify OTP / Token button in Forgot Password section
+    const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+    if (verifyOtpBtn) {
+      verifyOtpBtn.addEventListener('click', async () => {
+        const inputVal = document.getElementById('recoveryOtpCode')?.value?.trim();
+        if (!inputVal) {
+          showError('Please enter the verification code or token from your email.');
+          return;
+        }
+
+        // If the user pasted a full URL or token fragment containing access_token= or token=
+        if (inputVal.includes('access_token=') || inputVal.includes('token=')) {
+          let extractedToken = null;
+          try {
+            if (inputVal.includes('#')) {
+              const hash = inputVal.split('#')[1];
+              extractedToken = new URLSearchParams(hash).get('access_token');
+            } else if (inputVal.includes('?')) {
+              const query = inputVal.split('?')[1];
+              extractedToken = new URLSearchParams(query).get('token') || new URLSearchParams(query).get('access_token');
+            }
+          } catch (e) {}
+          if (extractedToken) {
+            recoveryAccessToken = extractedToken;
+            if (resetPassSection) resetPassSection.style.display = 'none';
+            if (setNewPassSection) setNewPassSection.style.display = 'block';
+            showSuccess('Identity verified! Please set your new password.');
+            return;
+          }
+        }
+
+        verifyOtpBtn.disabled = true;
+        verifyOtpBtn.innerText = 'Verifying code...';
+
+        const rawEmail = document.getElementById('resetEmail')?.value?.trim() || '';
+        const email = rawEmail.includes('@') ? rawEmail : getResolvedAdminEmail();
+
+        try {
+          const res = await fetch(`${SUPABASE_ADMIN_CONFIG.url}/auth/v1/verify`, {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_ADMIN_CONFIG.anonKey,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              type: 'recovery',
+              email: email,
+              token: inputVal
+            })
+          });
+
+          const data = await res.json();
+          if (res.ok && data.access_token) {
+            recoveryAccessToken = data.access_token;
+            if (resetPassSection) resetPassSection.style.display = 'none';
+            if (setNewPassSection) setNewPassSection.style.display = 'block';
+            showSuccess('Identity verified! Please set your new password.');
+            return;
+          } else {
+            showError(data.error_description || data.msg || 'Invalid verification code. Please check your email.');
+          }
+        } catch (e) {
+          showError('Error connecting to authentication server.');
+        } finally {
+          verifyOtpBtn.disabled = false;
+          verifyOtpBtn.innerText = 'Verify Code & Set New Password';
         }
       });
     }
